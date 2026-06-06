@@ -14,11 +14,16 @@ export class DownloadFile {
   }
 
   async handle(url: string, directory: string, fileName: string): Promise<void> {
-    this.logger.log(`Downloading ${fileName}`);
+    // Windows/macOS cannot create files whose names contain these characters.
+    // COROS structured-workout names auto-include them (pace "@4:25", reps
+    // "30x20/100"), which made the local write silently fail. Sanitize before
+    // saving — the download URL is keyed by labelId, so the name is cosmetic.
+    const safeFileName = fileName.replace(/[<>:"/\\|?*]/g, '_');
+    this.logger.log(`Downloading ${safeFileName}`);
     const response = await this.httpService.axiosRef.get(url, {
       responseType: 'stream',
     });
 
-    await pipeline(response.data, fs.createWriteStream(path.join(directory, fileName)));
+    await pipeline(response.data, fs.createWriteStream(path.join(directory, safeFileName)));
   }
 }
